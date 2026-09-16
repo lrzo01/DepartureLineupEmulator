@@ -6,26 +6,32 @@ on:
       - 'v*'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: windows-latest
+            platform: windows
             artifact_name: departure-board-emulator-windows
-            executable_path: dist/departure-board-emulator.exe
-            is_mac: false
+            executable_path: departure-board-emulator-windows.zip
+
           - os: ubuntu-latest
+            platform: linux
             artifact_name: departure-board-emulator-linux
-            executable_path: dist/departure-board-emulator
-            is_mac: false
+            executable_path: departure-board-emulator-linux.zip
+
           - os: macos-latest
+            platform: mac
             artifact_name: departure-board-emulator-mac
             executable_path: departure-board-emulator-mac.zip
-            is_mac: true
 
     steps:
       - name: Check out repository
@@ -40,10 +46,15 @@ jobs:
         run: uv python install 3.12
 
       - name: Install Linux dependencies
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.platform == 'linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libegl1 libgl1 libglx-mesa0 libxkbcommon-x11-0 libxcb-cursor0
+          sudo apt-get install -y \
+            libegl1 \
+            libgl1 \
+            libglx-mesa0 \
+            libxkbcommon-x11-0 \
+            libxcb-cursor0
 
       - name: Install project dependencies
         run: uv sync --all-groups
@@ -52,7 +63,9 @@ jobs:
         run: uv pip install pyinstaller
 
       - name: Create .env from secret
-        run: echo "WORLDLINE_TIGER_API_KEY=${{ secrets.WORLDLINE_TIGER_API_KEY }}" > .env
+        shell: bash
+        run: |
+          echo "WORLDLINE_TIGER_API_KEY=${{ secrets.WORLDLINE_TIGER_API_KEY }}" > .env
 
       - name: Build
         run: >
@@ -65,8 +78,23 @@ jobs:
           --add-data="fonts:fonts"
           run.py
 
+      - name: Zip Windows bundle
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          Compress-Archive `
+            -Path "dist/departure-board-emulator" `
+            -DestinationPath "departure-board-emulator-windows.zip"
+
+      - name: Zip Linux bundle
+        if: matrix.platform == 'linux'
+        run: |
+          cd dist
+          zip -r ../departure-board-emulator-linux.zip departure-board-emulator
+          cd ..
+
       - name: Zip macOS bundle
-        if: matrix.is_mac == true
+        if: matrix.platform == 'mac'
         run: |
           cd dist
           zip -r ../departure-board-emulator-mac.zip departure-board-emulator.app
@@ -77,11 +105,13 @@ jobs:
         with:
           name: ${{ matrix.artifact_name }}
           path: ${{ matrix.executable_path }}
+          if-no-files-found: error
 
   release:
     name: Create release
     needs: build
     runs-on: ubuntu-latest
+
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v4
@@ -91,9 +121,13 @@ jobs:
       - name: Group release files
         run: |
           mkdir release-dir
-          mv artifacts/departure-board-emulator-windows/* release-dir/ 2>/dev/null || true
-          mv artifacts/departure-board-emulator-linux/* release-dir/ 2>/dev/null || true
-          mv artifacts/departure-board-emulator-mac/* release-dir/ 2>/dev/null || true
+
+          mv artifacts/departure-board-emulator-windows/departure-board-emulator-windows.zip release-dir/
+          mv artifacts/departure-board-emulator-linux/departure-board-emulator-linux.zip release-dir/
+          mv artifacts/departure-board-emulator-mac/departure-board-emulator-mac.zip release-dir/
+
+      - name: Show release files
+        run: ls -lh release-dir
 
       - name: Generate release
         uses: softprops/action-gh-release@v2
