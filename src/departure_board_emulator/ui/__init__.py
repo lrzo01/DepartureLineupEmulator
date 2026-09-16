@@ -1,0 +1,1 @@
+from departure_board_emulator.ui.main_window import Ui_MainWindow as Ui_MainWindow

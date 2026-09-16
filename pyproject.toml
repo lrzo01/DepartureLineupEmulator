@@ -1,0 +1,28 @@
+[project]
+name = "departure-board-emulator"
+version = "0.1.0"
+description = "Emulates departure lineup boards in the UK"
+readme = "README.md"
+authors = [
+    { name = "Lorenzo", email = "lorenzo@lrzodev.xyz" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=2.5.3",
+    "pyside6>=6.11.2",
+    "python-dotenv>=1.2.3",
+    "requests>=2.34.2",
+    "toml>=0.10.2",
+]
+
+[project.scripts]
+departure-board-emulator = "departure_board_emulator:main"
+
+[build-system]
+requires = ["uv_build>=0.12.7,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "black>=26.5.1",
+]

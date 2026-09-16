@@ -1,0 +1,20 @@
+locations_url = "https://tiger-api-portal.worldline.global/locations"
+stations_url = "https://tiger-api-portal.worldline.global/services"
+startup_location = "Reading"
+font_path = "fonts"
+
+refresh_secs = 30
+target_fps = 60
+
+dot_size = 4
+dot_spacing = 1
+on_color = "#ffaa00"
+off_color = "#1e1805"
+bg_color = "#08080a"
+
+destination_cycle_ms = 5000
+extra_message_hold_secs = 5.0
+scroll_end_pause_secs = 0.5
+associated_page_h_padding = 6
+scroll_speed_px = 0.75
+associated_page_calling_cycles = 3

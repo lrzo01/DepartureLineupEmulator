@@ -1,0 +1,103 @@
+name: Build
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            artifact_name: departure-board-emulator-windows
+            executable_path: dist/departure-board-emulator.exe
+            is_mac: false
+          - os: ubuntu-latest
+            artifact_name: departure-board-emulator-linux
+            executable_path: dist/departure-board-emulator
+            is_mac: false
+          - os: macos-latest
+            artifact_name: departure-board-emulator-mac
+            executable_path: departure-board-emulator-mac.zip
+            is_mac: true
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libgl1 libglx-mesa0 libxkbcommon-x11-0 libxcb-cursor0
+
+      - name: Install project dependencies
+        run: uv sync --all-groups
+
+      - name: Install PyInstaller
+        run: uv pip install pyinstaller
+
+      - name: Create .env from secret
+        run: echo "WORLDLINE_TIGER_API_KEY=${{ secrets.WORLDLINE_TIGER_API_KEY }}" > .env
+
+      - name: Build
+        run: >
+          uv run pyinstaller
+          --noconsole
+          --noconfirm
+          --name=departure-board-emulator
+          --add-data="config.toml:."
+          --add-data=".env:."
+          --add-data="fonts:fonts"
+          run.py
+
+      - name: Zip macOS bundle
+        if: matrix.is_mac == true
+        run: |
+          cd dist
+          zip -r ../departure-board-emulator-mac.zip departure-board-emulator.app
+          cd ..
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.executable_path }}
+
+  release:
+    name: Create release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Group release files
+        run: |
+          mkdir release-dir
+          mv artifacts/departure-board-emulator-windows/* release-dir/ 2>/dev/null || true
+          mv artifacts/departure-board-emulator-linux/* release-dir/ 2>/dev/null || true
+          mv artifacts/departure-board-emulator-mac/* release-dir/ 2>/dev/null || true
+
+      - name: Generate release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-dir/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
