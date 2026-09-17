@@ -161,6 +161,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if not column.board.data:
                 continue
 
+            if column.board.tick_flash():
+                column.redraw_structure()
+
             if column.board.tick_scroll():
                 column.redraw_message()
 

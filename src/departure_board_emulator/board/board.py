@@ -46,6 +46,9 @@ class Board(
         self.current_destination = "Front"
         self.showing_via = False
         self.showing_plat = False
+        self.is_showing_platform = False
+        self.platform_flash_state = True
+        self.current_secondary_text = ""
         self.current_page = 1
         self.showing_calling_at = True
         self.current_amenity_page = 0

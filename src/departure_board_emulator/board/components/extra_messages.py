@@ -25,19 +25,7 @@ class ExtraMessages(BoardBase):
     @staticmethod
     def join_message_parts(*parts: Any) -> str:
         cleaned = [str(part).strip() for part in parts if part and str(part).strip()]
-
-        if not cleaned:
-            return ""
-
-        result = cleaned[0]
-
-        for part in cleaned[1:]:
-            if result[-1] not in ".!?,;:":
-                result += "."
-
-            result += " " + part
-
-        return result
+        return " ".join(cleaned)
 
     def is_delayed(self) -> bool:
         status = self.data.get("DepStatus")

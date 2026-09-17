@@ -59,6 +59,62 @@ class Destination(BoardBase):
         )
 
     def update_time_state_line(self) -> None:
+        if self.showing_plat:
+            if self.data.get("DepStatus") == "Cancelled":
+                self.showing_plat = False
+                self.current_secondary_text = "Cancelled"
+                self.is_showing_platform = False
+            else:
+                boarding_info: Any = self.data.get("BoardingInfo") or {}
+
+                boarding_status = boarding_info.get("BoardingStatus")
+
+                if boarding_status and "Boarding" not in boarding_status:
+                    self.current_secondary_text = boarding_status
+                    self.is_showing_platform = False
+                else:
+                    platform = self.data.get("Platform")
+
+                    if platform == "BUS":
+                        self.current_secondary_text = "BUS"
+                    else:
+                        self.current_secondary_text = (
+                            f"Platform {platform}" if platform else "Platform -"
+                        )
+                    self.is_showing_platform = True
+
+                self.showing_plat = False
+
+        else:
+            dep_status = self.data.get("DepStatus")
+
+            if dep_status == "Exp":
+                if self.data.get(
+                    "ExpectedDepTimestamp",
+                    "",
+                ) > self.data.get("DepTimestamp", ""):
+                    etd = self.data.get("ETD", "")
+
+                    self.current_secondary_text = f"Exp {etd}" if etd else "Delayed"
+                else:
+                    self.current_secondary_text = "On time"
+
+            elif dep_status == "Delayed":
+                self.current_secondary_text = "Delayed"
+            elif dep_status == "Cancelled":
+                self.current_secondary_text = "Cancelled"
+            else:
+                self.current_secondary_text = "On time"
+
+            self.showing_plat = True
+            self.is_showing_platform = False
+
+            if dep_status == "Cancelled":
+                self.showing_plat = False
+
+        self.render_time_state_secondary()
+
+    def render_time_state_secondary(self) -> None:
         self.lines[0].clear()
 
         departure_time = self.data.get("STD", "")
@@ -75,68 +131,48 @@ class Destination(BoardBase):
             LU.HorizontalAlignment.Left,
         )
 
-        secondary_line = ""
+        has_platform_changed = bool(self.data.get("PlatformChanged"))
 
-        if self.showing_plat:
-            if self.data.get("DepStatus") == "Cancelled":
-                self.showing_plat = False
-                secondary_line = "Cancelled"
-            else:
-                boarding_info: Any = self.data.get("BoardingInfo") or {}
+        secondary_text = self.current_secondary_text
 
-                boarding_status = boarding_info.get("BoardingStatus")
+        if (
+            self.is_showing_platform
+            and has_platform_changed
+            and not self.platform_flash_state
+        ):
+            secondary_text = ""
 
-                if boarding_status and "Boarding" not in boarding_status:
-                    secondary_line = boarding_status
-                else:
-                    platform = self.data.get("Platform")
+        if secondary_text:
+            self.lines[0].write_text(
+                secondary_text,
+                [
+                    self.fonts["tall"],
+                    self.fonts["wide"],
+                    self.fonts["std"],
+                ],
+                LU.TextConstraint.ReduceFontSize,
+                LU.VerticalAlignment.Centre,
+                LU.HorizontalAlignment.Right,
+            )
 
-                    if platform == "BUS":
-                        secondary_line = "BUS"
-                    else:
-                        secondary_line = (
-                            f"Platform {platform}" if platform else "Platform -"
-                        )
+    def tick_flash(self) -> bool:
+        has_platform_changed = bool(self.data.get("PlatformChanged"))
+        if not self.data or not has_platform_changed or not self.is_showing_platform:
+            if not self.platform_flash_state:
+                self.platform_flash_state = True
+                self.render_time_state_secondary()
+                return True
+            return False
 
-                self.showing_plat = False
+        import time
 
-        else:
-            dep_status = self.data.get("DepStatus")
+        new_flash_state = (int(time.time()) % 2) == 0
+        if new_flash_state != self.platform_flash_state:
+            self.platform_flash_state = new_flash_state
+            self.render_time_state_secondary()
+            return True
 
-            if dep_status == "Exp":
-                if self.data.get(
-                    "ExpectedDepTimestamp",
-                    "",
-                ) > self.data.get("DepTimestamp", ""):
-                    etd = self.data.get("ETD", "")
-
-                    secondary_line = f"Exp {etd}" if etd else "Delayed"
-                else:
-                    secondary_line = "On time"
-
-            elif dep_status == "Delayed":
-                secondary_line = "Delayed"
-            elif dep_status == "Cancelled":
-                secondary_line = "Cancelled"
-            else:
-                secondary_line = "On time"
-
-            self.showing_plat = True
-
-            if dep_status == "Cancelled":
-                self.showing_plat = False
-
-        self.lines[0].write_text(
-            secondary_line,
-            [
-                self.fonts["tall"],
-                self.fonts["wide"],
-                self.fonts["std"],
-            ],
-            LU.TextConstraint.ReduceFontSize,
-            LU.VerticalAlignment.Centre,
-            LU.HorizontalAlignment.Right,
-        )
+        return False
 
     def update_toc_line(self) -> None:
         self.lines[15].clear()

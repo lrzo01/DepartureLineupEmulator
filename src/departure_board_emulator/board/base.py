@@ -37,6 +37,9 @@ class BoardBase:
         self.current_destination: str = "Front"
         self.showing_via: bool = False
         self.showing_plat: bool = False
+        self.is_showing_platform: bool = False
+        self.platform_flash_state: bool = True
+        self.current_secondary_text: str = ""
         self.showing_calling_at: bool = True
 
         self.current_page: int = 1
@@ -112,6 +115,9 @@ class BoardBase:
         pass
 
     def tick_scroll(self, pixels: int | None = None) -> bool:
+        return False
+
+    def tick_flash(self) -> bool:
         return False
 
     def scroll_pending(self) -> bool:
