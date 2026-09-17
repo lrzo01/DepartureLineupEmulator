@@ -30,10 +30,12 @@ def _coverage(dot_size: int, stride: int) -> np.ndarray:
 
     yy, xx = np.meshgrid(axis, axis, indexing="ij")
 
-    centre = dot_size / 2.0
-    radius = dot_size / 2.0
-
-    inside = ((xx - centre) ** 2 + (yy - centre) ** 2 <= radius**2).astype(np.float32)
+    if dot_size <= 2:
+        inside = ((xx >= 0) & (xx <= dot_size) & (yy >= 0) & (yy <= dot_size)).astype(np.float32)
+    else:
+        centre = dot_size / 2.0
+        radius = dot_size / 2.0
+        inside = ((xx - centre) ** 2 + (yy - centre) ** 2 <= radius**2).astype(np.float32)
 
     return inside.reshape(
         stride,
@@ -114,6 +116,9 @@ def render_dot_grid(
     on_color: str | None = None,
     off_color: str | None = None,
     bg_color: str | None = None,
+    border_size: int = 0,
+    border_padding: int = 0,
+    border_color: str = "#000000",
 ) -> QPixmap:
     actual_dot_size = (
         dot_size
@@ -170,9 +175,9 @@ def render_dot_grid(
 
     width, height = grid_pixel_size(grid, actual_dot_size, actual_dot_spacing)
 
-    buffer = np.empty((rows * stride, cols * stride, 4), dtype=np.uint8)
+    grid_buffer = np.empty((rows * stride, cols * stride, 4), dtype=np.uint8)
 
-    view = buffer.reshape(
+    view = grid_buffer.reshape(
         rows,
         stride,
         cols,
@@ -185,13 +190,39 @@ def render_dot_grid(
 
     np.take(tiles, grid, axis=0, out=view)
 
-    image = QImage(
-        buffer.data,
-        width,
-        height,
-        cols * stride * 4,
-        QImage.Format.Format_RGB32,
-    )
+    if border_size > 0 or border_padding > 0:
+        total_margin = border_size + border_padding
+        out_w = width + total_margin * 2
+        out_h = height + total_margin * 2
+
+        full_buffer = np.empty((out_h, out_w, 4), dtype=np.uint8)
+        border_rgb = _rgb(border_color)
+
+        full_buffer[..., :3] = border_rgb
+        full_buffer[..., 3] = 255
+
+        if border_padding > 0:
+            bg_rgb = _rgb(actual_bg_color)
+            full_buffer[border_size : out_h - border_size, border_size : out_w - border_size, :3] = bg_rgb
+
+        full_buffer[total_margin : total_margin + height, total_margin : total_margin + width] = grid_buffer[:height, :width]
+
+        image = QImage(
+            full_buffer.data,
+            out_w,
+            out_h,
+            out_w * 4,
+            QImage.Format.Format_RGB32,
+        )
+    else:
+        cropped_buffer = grid_buffer[:height, :width]
+        image = QImage(
+            cropped_buffer.copy().data,
+            width,
+            height,
+            width * 4,
+            QImage.Format.Format_RGB32,
+        )
 
     return QPixmap.fromImage(image)
 
