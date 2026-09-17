@@ -1,6 +1,6 @@
 locations_url = "https://tiger-api-portal.worldline.global/locations"
 stations_url = "https://tiger-api-portal.worldline.global/services"
-startup_location = "Reading"
+startup_location = "London Waterloo"
 font_path = "fonts"
 
 refresh_secs = 30
