@@ -128,7 +128,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.scroll_timer.timeout.connect(self.tick_scrolls)
         self.scroll_timer.start(timer_interval)
 
+        refresh_secs = fetcher.fetch_config_item("refresh_secs", int, 30)
+        self.data_refresh_timer: QTimer = QTimer(self)
+        self.data_refresh_timer.timeout.connect(self.refresh_data_source)
+        self.data_refresh_timer.start(refresh_secs * 1000)
+
         self.update_station_view()
+
+    def refresh_data_source(self) -> None:
+        self.cached_services = [
+            service
+            for service in self.data_source.data.get("services", [])
+            if service.get("STD") and service.get("CallingPoints")
+        ]
+        self._apply_board_count(preserve_existing=True)
 
     def select_station(self, station: str) -> None:
         self.crsClusterLineEdit.setText(station)
