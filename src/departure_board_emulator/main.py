@@ -12,7 +12,8 @@ def main() -> None:
     default_startup_location = fetcher.fetch_config_item(
         "startup_location", str, "EUSTON"
     )
-    data_source = DataSource(default_startup_location, fetcher, 30)
+    refresh_secs = fetcher.fetch_config_item("refresh_secs", int, 30)
+    data_source = DataSource(default_startup_location, fetcher, refresh_secs)
 
     app = QApplication(sys.argv)
     board = Board(fetcher)
