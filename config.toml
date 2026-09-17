@@ -8,6 +8,8 @@ target_fps = 60
 
 dot_size = 4
 dot_spacing = 1
+border_size = 12
+border_padding = 8
 on_color = "#ffaa00"
 off_color = "#1e1805"
 bg_color = "#08080a"
