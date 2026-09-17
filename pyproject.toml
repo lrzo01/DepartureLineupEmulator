@@ -1,6 +1,6 @@
 [project]
 name = "departure-board-emulator"
-version = "0.1.2"
+version = "0.1.3"
 description = "Emulates departure lineup boards in the UK"
 readme = "README.md"
 authors = [
