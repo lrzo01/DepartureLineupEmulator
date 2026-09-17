@@ -31,13 +31,23 @@ class BoardColumn:
 
         dot_size = board.fetcher.fetch_config_item("dot_size", int, 4)
         dot_spacing = board.fetcher.fetch_config_item("dot_spacing", int, 1)
+        border_size = board.fetcher.fetch_config_item("border_size", int, 12)
+        border_padding = board.fetcher.fetch_config_item("border_padding", int, 8)
         stride = dot_size + dot_spacing
+        margin = border_size + border_padding
 
-        self.message_item.setPos(0, y * stride)
+        self.message_item.setPos(margin, margin + y * stride)
 
     def redraw_structure(self) -> None:
+        border_size = self.board.fetcher.fetch_config_item("border_size", int, 12)
+        border_padding = self.board.fetcher.fetch_config_item("border_padding", int, 8)
         self.structural_item.setPixmap(
-            render_dot_grid(self.board.get_static_grid(), fetcher=self.board.fetcher)
+            render_dot_grid(
+                self.board.get_static_grid(),
+                fetcher=self.board.fetcher,
+                border_size=border_size,
+                border_padding=border_padding,
+            )
         )
 
     def redraw_message(self) -> None:
@@ -89,10 +99,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.scene: QGraphicsScene = QGraphicsScene(self)
         self.graphicsView.setScene(self.scene)
         self.graphicsView.setHorizontalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded
         )
         self.graphicsView.setVerticalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded
         )
 
         self.columns: list[BoardColumn] = [BoardColumn(self.scene, board)]
@@ -162,36 +172,47 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     ) -> None:
         while len(self.columns) < count:
             new_board = Board(self.fetcher, fonts=self.shared_fonts)
-            self.columns.append(BoardColumn(self.scene, new_board))
+            col = BoardColumn(self.scene, new_board)
+            col.board.render_blank_board()
+            col.redraw_structure()
+            col.redraw_message()
+            self.columns.append(col)
 
         while len(self.columns) > count:
             column = self.columns.pop()
             column.remove(self.scene)
 
-        for column, service in zip(self.columns, services):
-            current_uid = (column.board.data or {}).get("UID")
-            new_uid = service.get("UID")
+        for i, column in enumerate(self.columns):
+            if i < len(services):
+                service = services[i]
+                current_uid = (column.board.data or {}).get("UID")
+                new_uid = service.get("UID")
 
-            if preserve_existing and column.board.data and current_uid == new_uid:
-                continue
+                if preserve_existing and column.board.data and current_uid == new_uid:
+                    continue
 
-            column.board.data = service
-            column.board.reset_destination_cycle()
-            column.board.destination_cycle()
-            column.redraw_structure()
-            column.redraw_message()
+                column.board.data = service
+                column.board.reset_destination_cycle()
+                column.board.destination_cycle()
+                column.redraw_structure()
+                column.redraw_message()
+            else:
+                is_blanked = getattr(column.board, "_is_blanked", False)
+                if preserve_existing and is_blanked:
+                    continue
+
+                column.board.data = {}
+                column.board._is_blanked = True
+                column.board.reset_destination_cycle()
+                column.board.render_blank_board()
+                column.redraw_structure()
+                column.redraw_message()
 
         self._layout_columns()
         self._fit_view()
 
     def _apply_board_count(self, preserve_existing: bool) -> None:
-        if not self.cached_services:
-            return
-
-        count = min(
-            self.display_count(),
-            len(self.cached_services),
-        )
+        count = self.display_count()
 
         self.set_board_count(
             count,
@@ -269,11 +290,28 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.scene.setSceneRect(bounds)
 
     def _fit_view(self) -> None:
-        if not self.scene.sceneRect().isEmpty():
-            self.graphicsView.fitInView(
-                self.scene.sceneRect(),
-                Qt.AspectRatioMode.KeepAspectRatio,
-            )
+        rect = self.scene.sceneRect()
+        if not rect.isEmpty():
+            viewport_size = self.graphicsView.viewport().size()
+            if viewport_size.width() > 0 and viewport_size.height() > 0:
+                scale_x = viewport_size.width() / rect.width()
+                scale_y = viewport_size.height() / rect.height()
+                scale = min(scale_x, scale_y)
+
+                if self.columns:
+                    board_w = self.columns[0].structural_item.pixmap().width()
+                    board_h = self.columns[0].structural_item.pixmap().height()
+                    if board_w > 0 and board_h > 0:
+                        ref_cols = 3
+                        ref_rows = 2
+                        ref_w = ref_cols * board_w + (ref_cols - 1) * 16.0
+                        ref_h = ref_rows * board_h + (ref_rows - 1) * 16.0
+                        min_scale = min(viewport_size.width() / ref_w, viewport_size.height() / ref_h)
+                        scale = max(scale, min_scale)
+
+                self.graphicsView.resetTransform()
+                self.graphicsView.scale(scale, scale)
+                self.graphicsView.centerOn(rect.center())
 
     def resizeEvent(self, event: QResizeEvent) -> None:
         super().resizeEvent(event)
@@ -315,8 +353,5 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             for service in self.data_source.data.get("services", [])
             if service.get("STD") and service.get("CallingPoints")
         ]
-
-        if not self.cached_services:
-            return
 
         self._apply_board_count(preserve_existing=False)
