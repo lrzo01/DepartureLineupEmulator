@@ -58,4 +58,3 @@ class Board(
         self.extra_messages = []
         self.current_extra_message = 0
         self.reset_scroll()
-

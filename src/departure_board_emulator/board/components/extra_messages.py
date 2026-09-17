@@ -21,6 +21,7 @@ class ExtraMessages(BoardBase):
     _extra_message_timer: int
     _scroll_text: str | None
     _scroll_buffer: np.ndarray | None
+
     @staticmethod
     def join_message_parts(*parts: Any) -> str:
         cleaned = [str(part).strip() for part in parts if part and str(part).strip()]

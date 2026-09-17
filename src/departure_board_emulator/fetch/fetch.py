@@ -57,8 +57,8 @@ class Fetcher:
         # woopsies for my bad practices
 
         if response and isinstance(response, list):
-            for location in response: # type: ignore
-                locations.append(location) # type: ignore
+            for location in response:  # type: ignore
+                locations.append(location)  # type: ignore
 
         return locations
 

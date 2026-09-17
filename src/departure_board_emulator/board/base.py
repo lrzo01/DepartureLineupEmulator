@@ -7,7 +7,8 @@ import numpy as np
 from departure_board_emulator.board.line.line import Line
 from departure_board_emulator.fetch import Fetcher
 from departure_board_emulator.font import Font
-   
+
+
 class BoardBase:
     def __init__(
         self,
@@ -22,7 +23,9 @@ class BoardBase:
 
         self.extra_message_hold_ticks = int(hold_secs * target_fps)
         self.scroll_end_pause_ticks = int(pause_secs * target_fps)
-        self.scroll_step_px: float = fetcher.fetch_config_item("scroll_speed_px", float, 0.75)
+        self.scroll_step_px: float = fetcher.fetch_config_item(
+            "scroll_speed_px", float, 0.75
+        )
         self.associated_page_h_padding = fetcher.fetch_config_item(
             "associated_page_h_padding", int, 6
         )

@@ -306,7 +306,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         ref_rows = 2
                         ref_w = ref_cols * board_w + (ref_cols - 1) * 16.0
                         ref_h = ref_rows * board_h + (ref_rows - 1) * 16.0
-                        min_scale = min(viewport_size.width() / ref_w, viewport_size.height() / ref_h)
+                        min_scale = min(
+                            viewport_size.width() / ref_w,
+                            viewport_size.height() / ref_h,
+                        )
                         scale = max(scale, min_scale)
 
                 self.graphicsView.resetTransform()

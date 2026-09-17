@@ -13,6 +13,7 @@ _tile_cache: dict[tuple[int, int, str, str, str], np.ndarray] = {}
 # wouldnt touch, but it makes sure it renders in an optimised way
 # there is some weird bug with scrolling sometimes but the jittering is pretty minimal
 
+
 def _rgb(color: str) -> tuple[int, int, int]:
     color = color.lstrip("#")
 
@@ -31,11 +32,15 @@ def _coverage(dot_size: int, stride: int) -> np.ndarray:
     yy, xx = np.meshgrid(axis, axis, indexing="ij")
 
     if dot_size <= 2:
-        inside = ((xx >= 0) & (xx <= dot_size) & (yy >= 0) & (yy <= dot_size)).astype(np.float32)
+        inside = ((xx >= 0) & (xx <= dot_size) & (yy >= 0) & (yy <= dot_size)).astype(
+            np.float32
+        )
     else:
         centre = dot_size / 2.0
         radius = dot_size / 2.0
-        inside = ((xx - centre) ** 2 + (yy - centre) ** 2 <= radius**2).astype(np.float32)
+        inside = ((xx - centre) ** 2 + (yy - centre) ** 2 <= radius**2).astype(
+            np.float32
+        )
 
     return inside.reshape(
         stride,
@@ -203,9 +208,13 @@ def render_dot_grid(
 
         if border_padding > 0:
             bg_rgb = _rgb(actual_bg_color)
-            full_buffer[border_size : out_h - border_size, border_size : out_w - border_size, :3] = bg_rgb
+            full_buffer[
+                border_size : out_h - border_size, border_size : out_w - border_size, :3
+            ] = bg_rgb
 
-        full_buffer[total_margin : total_margin + height, total_margin : total_margin + width] = grid_buffer[:height, :width]
+        full_buffer[
+            total_margin : total_margin + height, total_margin : total_margin + width
+        ] = grid_buffer[:height, :width]
 
         image = QImage(
             full_buffer.data,
