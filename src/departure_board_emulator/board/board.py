@@ -15,6 +15,7 @@ from departure_board_emulator.board.components.extra_messages import (
 )
 from departure_board_emulator.board.components.grid import GridCompositing
 from departure_board_emulator.board.components.text_layout import TextLayout
+from departure_board_emulator.board.line import line_util as LU
 
 
 class Board(
@@ -26,7 +27,22 @@ class Board(
     TextLayout,
     GridCompositing,
 ):
+    def clear_all(self) -> None:
+        for line in self.lines:
+            line.clear()
+
+    def render_blank_board(self) -> None:
+        self.clear_all()
+        self.lines[15].write_text(
+            ".  .  .",
+            [self.fonts["std"]],
+            LU.TextConstraint.Free,
+            LU.VerticalAlignment.Centre,
+            LU.HorizontalAlignment.Left,
+        )
+
     def reset_destination_cycle(self) -> None:
+        self._is_blanked = False
         self.current_destination = "Front"
         self.showing_via = False
         self.showing_plat = False
@@ -42,3 +58,4 @@ class Board(
         self.extra_messages = []
         self.current_extra_message = 0
         self.reset_scroll()
+
